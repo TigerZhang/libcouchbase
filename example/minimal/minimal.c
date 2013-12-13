@@ -123,7 +123,7 @@ int main(int argc, char *argv[])
     if (argc > 3) {
         create_options.v.v0.passwd = argv[3];
     }
-    if (argc > 5) {
+    if (argc > 4) {
         method = argv[4];
     }
     if (argc > 5) {
