@@ -38,6 +38,16 @@
 #include <inttypes.h>
 #endif
 
+#include <sys/time.h>
+
+static inline void print_timestamp() {
+    struct timeval tv;
+    gettimeofday(&tv,NULL);
+    printf("%d:%d\n", tv.tv_sec, // seconds
+        tv.tv_usec // microseconds
+    );
+}
+
 static void error_callback(lcb_t instance, lcb_error_t error, const char *errinfo)
 {
     fprintf(stderr, "ERROR: %s (0x%x), %s\n",
@@ -51,6 +61,7 @@ static void store_callback(lcb_t instance, const void *cookie,
                            const lcb_store_resp_t *item)
 {
     if (error == LCB_SUCCESS) {
+        print_timestamp();
         fprintf(stderr, "STORED \"");
         fwrite(item->v.v0.key, sizeof(char), item->v.v0.nkey, stderr);
         fprintf(stderr, "\" CAS: %"PRIu64"\n", item->v.v0.cas);
@@ -67,6 +78,7 @@ static void get_callback(lcb_t instance, const void *cookie, lcb_error_t error,
                          const lcb_get_resp_t *item)
 {
     if (error == LCB_SUCCESS) {
+        print_timestamp();
         fprintf(stderr, "GOT \"");
         fwrite(item->v.v0.key, sizeof(char), item->v.v0.nkey, stderr);
         fprintf(stderr, "\" CAS: %"PRIu64" FLAGS:0x%x SIZE:%lu\n",
@@ -82,11 +94,24 @@ static void get_callback(lcb_t instance, const void *cookie, lcb_error_t error,
 
 int main(int argc, char *argv[])
 {
+    char *method = NULL;
+    char *key = NULL;
     lcb_error_t err;
     lcb_t instance;
     struct lcb_create_st create_options;
+    struct lcb_create_io_ops_st io_opts;
+
+    io_opts.version = 0;
+    io_opts.v.v0.type = LCB_IO_OPS_DEFAULT;
+    io_opts.v.v0.cookie = NULL;
 
     memset(&create_options, 0, sizeof(create_options));
+    err = lcb_create_io_ops(&create_options.v.v0.io, &io_opts);
+    if (err != LCB_SUCCESS) {
+        fprintf(stderr, "Failed to create IO instance: %s\n",
+                lcb_strerror(NULL, err));
+        return 1;
+    }
 
     if (argc > 1) {
         create_options.v.v0.host = argv[1];
@@ -97,6 +122,16 @@ int main(int argc, char *argv[])
     }
     if (argc > 3) {
         create_options.v.v0.passwd = argv[3];
+    }
+    if (argc > 5) {
+        method = argv[4];
+    }
+    if (argc > 5) {
+        key = argv[5];
+    }
+    int count = 1;
+    if (argc > 6) {
+        count = atoi(argv[6]);
     }
     err = lcb_create(&instance, &create_options);
     if (err != LCB_SUCCESS) {
@@ -116,6 +151,7 @@ int main(int argc, char *argv[])
     (void)lcb_set_store_callback(instance, store_callback);
     /* Run the event loop and wait until we've connected */
     lcb_wait(instance);
+    if (method == NULL || strcmp(method, "set") == 0)
     {
         lcb_store_cmd_t cmd;
         const lcb_store_cmd_t *commands[1];
@@ -124,27 +160,36 @@ int main(int argc, char *argv[])
         memset(&cmd, 0, sizeof(cmd));
         cmd.v.v0.operation = LCB_SET;
         cmd.v.v0.key = "foo";
+        if (key) cmd.v.v0.key = key;
         cmd.v.v0.nkey = 3;
         cmd.v.v0.bytes = "bar";
         cmd.v.v0.nbytes = 3;
-        err = lcb_store(instance, NULL, 1, commands);
-        if (err != LCB_SUCCESS) {
-            fprintf(stderr, "Failed to store: %s\n", lcb_strerror(NULL, err));
-            return 1;
+        print_timestamp();
+        for (int i=0; i < count; i++) {
+            err = lcb_store(instance, NULL, 1, commands);
+            if (err != LCB_SUCCESS) {
+                fprintf(stderr, "Failed to store: %s\n", lcb_strerror(NULL, err));
+                return 1;
+            }
         }
     }
     lcb_wait(instance);
+    if (method == NULL || strcmp(method, "get") == 0)
     {
         lcb_get_cmd_t cmd;
         const lcb_get_cmd_t *commands[1];
         commands[0] = &cmd;
         memset(&cmd, 0, sizeof(cmd));
         cmd.v.v0.key = "foo";
+        if (key) cmd.v.v0.key = key;
         cmd.v.v0.nkey = 3;
-        err = lcb_get(instance, NULL, 1, commands);
-        if (err != LCB_SUCCESS) {
-            fprintf(stderr, "Failed to get: %s\n", lcb_strerror(NULL, err));
-            return 1;
+        print_timestamp();
+        for (int i=0; i < count; i++) {
+            err = lcb_get(instance, NULL, 1, commands);
+            if (err != LCB_SUCCESS) {
+                fprintf(stderr, "Failed to get: %s\n", lcb_strerror(NULL, err));
+                return 1;
+            }
         }
     }
     lcb_wait(instance);
