@@ -71,7 +71,9 @@ extern "C" {
         /** Append this object to the existing object */
         LCB_APPEND = 0x04,
         /** Prepend this  object to the existing object */
-        LCB_PREPEND = 0x05
+        LCB_PREPEND = 0x05,
+
+        LCB_FSET = 0x06
     } lcb_storage_t;
 
     /**

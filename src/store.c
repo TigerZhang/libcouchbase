@@ -105,6 +105,9 @@ lcb_error_t lcb_store(lcb_t instance,
             req.message.header.request.extlen = 0;
             headersize -= 8;
             break;
+        case LCB_FSET:
+        	req.message.header.request.opcode = 0xe1;
+        	break;
         default:
             /* We were given an unknown storage operation. */
             return lcb_synchandler_return(instance,

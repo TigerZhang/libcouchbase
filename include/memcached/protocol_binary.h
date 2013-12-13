@@ -333,6 +333,21 @@ extern "C"
     typedef protocol_binary_request_set protocol_binary_request_replace;
 
     /**
+     * Definition of the packet used by fragment read and fragment write
+     */
+    typedef union {
+        struct {
+            protocol_binary_request_header header;
+            struct {
+                uint32_t offset;
+                uint32_t length;
+            } body;
+        } message;
+        uint8_t bytes[sizeof(protocol_binary_request_header) + 8];
+    } protocol_binary_request_fragment_read;
+    typedef protocol_binary_request_fragment_read protocol_binary_request_fragment_write;
+
+    /**
      * Definition of the packet returned by set, add and replace
      * See section 4
      */

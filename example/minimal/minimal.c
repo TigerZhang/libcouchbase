@@ -43,7 +43,7 @@
 static inline void print_timestamp() {
     struct timeval tv;
     gettimeofday(&tv,NULL);
-    printf("%d:%d\n", tv.tv_sec, // seconds
+    printf("%ld:%d\n", tv.tv_sec, // seconds
         tv.tv_usec // microseconds
     );
 }
@@ -90,6 +90,39 @@ static void get_callback(lcb_t instance, const void *cookie, lcb_error_t error,
                 lcb_strerror(instance, error), error);
     }
     (void)cookie;
+}
+
+lcb_error_t form_command(lcb_error_t err, lcb_t instance, const char * const key, const int count) {
+	lcb_store_cmd_t cmd;
+	const lcb_store_cmd_t* commands[1];
+	commands[0] = &cmd;
+	memset(&cmd, 0, sizeof(cmd));
+	cmd.v.v0.operation = LCB_SET;
+	cmd.v.v0.key = "foo";
+    if (key) cmd.v.v0.key = key;
+	cmd.v.v0.nkey = 3;
+	cmd.v.v0.bytes = "bar";
+	cmd.v.v0.nbytes = 3;
+    print_timestamp();
+    for (int i=0; i < count; i++)
+        err = lcb_store(instance, NULL, 1, commands);
+	return err;
+}
+
+lcb_error_t form_command_fset(lcb_error_t err, lcb_t instance) {
+	lcb_store_cmd_t cmd;
+	const lcb_store_cmd_t* commands[1];
+	commands[0] = &cmd;
+	memset(&cmd, 0, sizeof(cmd));
+	cmd.v.v0.operation = LCB_FSET;
+	cmd.v.v0.key = "fra";
+	cmd.v.v0.nkey = 3;
+	cmd.v.v0.bytes = "bar";
+	cmd.v.v0.nbytes = 3;
+	cmd.v.v0.flags = 1; // offset
+	cmd.v.v0.exptime = (lcb_time_t)1; // length
+	err = lcb_store(instance, NULL, 1, commands);
+	return err;
 }
 
 int main(int argc, char *argv[])
@@ -153,24 +186,16 @@ int main(int argc, char *argv[])
     lcb_wait(instance);
     if (method == NULL || strcmp(method, "set") == 0)
     {
-        lcb_store_cmd_t cmd;
-        const lcb_store_cmd_t *commands[1];
+		err = form_command(err, instance, key, count);
+        if (err != LCB_SUCCESS) {
+            fprintf(stderr, "Failed to store: %s\n", lcb_strerror(NULL, err));
+            return 1;
+        }
 
-        commands[0] = &cmd;
-        memset(&cmd, 0, sizeof(cmd));
-        cmd.v.v0.operation = LCB_SET;
-        cmd.v.v0.key = "foo";
-        if (key) cmd.v.v0.key = key;
-        cmd.v.v0.nkey = 3;
-        cmd.v.v0.bytes = "bar";
-        cmd.v.v0.nbytes = 3;
-        print_timestamp();
-        for (int i=0; i < count; i++) {
-            err = lcb_store(instance, NULL, 1, commands);
-            if (err != LCB_SUCCESS) {
-                fprintf(stderr, "Failed to store: %s\n", lcb_strerror(NULL, err));
-                return 1;
-            }
+		err = form_command_fset(err, instance);
+        if (err != LCB_SUCCESS) {
+            fprintf(stderr, "Failed to fragment store: %s\n", lcb_strerror(NULL, err));
+            return 1;
         }
     }
     lcb_wait(instance);
