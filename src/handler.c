@@ -650,6 +650,7 @@ static void store_response_handler(lcb_server_t *server,
         op = LCB_REPLACE;
         break;
     case PROTOCOL_BINARY_CMD_SET:
+    case PROTOCOL_BINARY_CMD_FSET:
         op = LCB_SET;
         break;
     case PROTOCOL_BINARY_CMD_APPEND:
@@ -1262,6 +1263,7 @@ int lcb_dispatch_response(lcb_server_t *c,
     case PROTOCOL_BINARY_CMD_SET:
     case PROTOCOL_BINARY_CMD_APPEND:
     case PROTOCOL_BINARY_CMD_PREPEND:
+    case PROTOCOL_BINARY_CMD_FSET:
         store_response_handler(c, ct, (void *)header);
         break;
 

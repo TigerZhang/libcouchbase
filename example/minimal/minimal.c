@@ -68,6 +68,11 @@ static void store_callback(lcb_t instance, const void *cookie,
     } else {
         fprintf(stderr, "STORE ERROR: %s (0x%x)\n",
                 lcb_strerror(instance, error), error);
+        if (error == 0xd) {
+        	fprintf(stderr, "key[");
+            fwrite(item->v.v0.key, sizeof(char), item->v.v0.nkey, stderr);
+            fprintf(stderr, "]\n");
+        }
         exit(EXIT_FAILURE);
     }
     (void)cookie;
@@ -109,19 +114,39 @@ lcb_error_t form_command(lcb_error_t err, lcb_t instance, const char * const key
 	return err;
 }
 
-lcb_error_t form_command_fset(lcb_error_t err, lcb_t instance) {
+lcb_error_t form_command_fset(lcb_error_t err, lcb_t instance, const char *const key) {
 	lcb_store_cmd_t cmd;
 	const lcb_store_cmd_t* commands[1];
 	commands[0] = &cmd;
 	memset(&cmd, 0, sizeof(cmd));
 	cmd.v.v0.operation = LCB_FSET;
 	cmd.v.v0.key = "fra";
+	cmd.v.v0.key = key;
 	cmd.v.v0.nkey = 3;
-	cmd.v.v0.bytes = "bar";
+	cmd.v.v0.bytes = "123";
 	cmd.v.v0.nbytes = 3;
 	cmd.v.v0.flags = 1; // offset
 	cmd.v.v0.exptime = (lcb_time_t)1; // length
 	err = lcb_store(instance, NULL, 1, commands);
+	return err;
+}
+
+lcb_error_t form_command_get(int count, lcb_error_t err, lcb_t instance,
+		char* key) {
+	lcb_get_cmd_t cmd;
+	const lcb_get_cmd_t* commands[1];
+	commands[0] = &cmd;
+	memset(&cmd, 0, sizeof(cmd));
+	cmd.v.v0.key = "foo";
+	if (key)
+		cmd.v.v0.key = key;
+
+	cmd.v.v0.nkey = 3;
+	print_timestamp();
+	for (int i = 0; i < count; i++) {
+		err = lcb_get(instance, NULL, 1, commands);
+
+	}
 	return err;
 }
 
@@ -192,29 +217,26 @@ int main(int argc, char *argv[])
             return 1;
         }
 
-		err = form_command_fset(err, instance);
-        if (err != LCB_SUCCESS) {
-            fprintf(stderr, "Failed to fragment store: %s\n", lcb_strerror(NULL, err));
-            return 1;
-        }
+        form_command(err, instance, "fra", 1);
+
     }
     lcb_wait(instance);
+
+    lcb_wait(instance);
+    if (method == NULL || strcmp(method, "fset") == 0)
+    {
+    	err = form_command_fset(err, instance, "fra");
+    	if (err != LCB_SUCCESS) {
+    		fprintf(stderr, "Failed to fragment store: %s\n", lcb_strerror(NULL, err));
+    		return 1;
+    	}
+    }
     if (method == NULL || strcmp(method, "get") == 0)
     {
-        lcb_get_cmd_t cmd;
-        const lcb_get_cmd_t *commands[1];
-        commands[0] = &cmd;
-        memset(&cmd, 0, sizeof(cmd));
-        cmd.v.v0.key = "foo";
-        if (key) cmd.v.v0.key = key;
-        cmd.v.v0.nkey = 3;
-        print_timestamp();
-        for (int i=0; i < count; i++) {
-            err = lcb_get(instance, NULL, 1, commands);
-            if (err != LCB_SUCCESS) {
-                fprintf(stderr, "Failed to get: %s\n", lcb_strerror(NULL, err));
-                return 1;
-            }
+		err = form_command_get(count, err, instance, key);
+        if (err != LCB_SUCCESS) {
+            fprintf(stderr, "Failed to get: %s\n", lcb_strerror(NULL, err));
+            return 1;
         }
     }
     lcb_wait(instance);

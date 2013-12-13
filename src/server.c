@@ -136,6 +136,7 @@ static void failout_single_request(lcb_server_t *server,
                               &resp.store);
         break;
     case PROTOCOL_BINARY_CMD_SET:
+    case PROTOCOL_BINARY_CMD_FSET:
         setup_lcb_store_resp_t(&resp.store, keyptr, nkey, 0);
         TRACE_STORE_END(req->request.opaque, ntohs(req->request.vbucket),
                         req->request.opcode, error, &resp.store);

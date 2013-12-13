@@ -171,6 +171,8 @@ extern "C"
 
         PROTOCOL_BINARY_CMD_LAST_RESERVED = 0x8f,
 
+        PROTOCOL_BINARY_CMD_FSET = 0xe1,
+
         /* Scrub the data */
         PROTOCOL_BINARY_CMD_SCRUB = 0xf0,
         /* Refresh the ISASL data */

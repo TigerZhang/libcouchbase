@@ -106,7 +106,7 @@ lcb_error_t lcb_store(lcb_t instance,
             headersize -= 8;
             break;
         case LCB_FSET:
-        	req.message.header.request.opcode = 0xe1;
+        	req.message.header.request.opcode = PROTOCOL_BINARY_CMD_FSET;
         	break;
         default:
             /* We were given an unknown storage operation. */
